@@ -7,6 +7,7 @@ use App\Filament\Resources\Terms\Pages\EditTerm;
 use App\Filament\Resources\Terms\Pages\ListTerms;
 use App\Filament\Resources\Terms\Schemas\TermForm;
 use App\Filament\Resources\Terms\Tables\TermsTable;
+use App\Filament\Traits\HasFilterableUrls;
 use App\Models\Term;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -16,6 +17,8 @@ use Filament\Tables\Table;
 
 class TermResource extends Resource
 {
+    use HasFilterableUrls;
+
     protected static ?string $model = Term::class;
 
     protected static ?string $navigationLabel = 'Terms';
