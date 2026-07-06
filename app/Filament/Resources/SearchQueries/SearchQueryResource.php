@@ -4,6 +4,7 @@ namespace App\Filament\Resources\SearchQueries;
 
 use App\Filament\Resources\SearchQueries\Pages\EditSearchQuery;
 use App\Filament\Resources\SearchQueries\Pages\ListSearchQueries;
+use App\Filament\Resources\SearchQueries\RelationManagers\TermsRelationManager;
 use App\Filament\Resources\SearchQueries\Schemas\SearchQueryForm;
 use App\Filament\Resources\SearchQueries\Tables\SearchQueriesTable;
 use App\Filament\Traits\HasFilterableUrls;
@@ -39,7 +40,7 @@ class SearchQueryResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            TermsRelationManager::class,
         ];
     }
 

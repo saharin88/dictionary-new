@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Terms;
 use App\Filament\Resources\Terms\Pages\CreateTerm;
 use App\Filament\Resources\Terms\Pages\EditTerm;
 use App\Filament\Resources\Terms\Pages\ListTerms;
+use App\Filament\Resources\Terms\RelationManagers\SearchQueriesRelationManager;
 use App\Filament\Resources\Terms\Schemas\TermForm;
 use App\Filament\Resources\Terms\Tables\TermsTable;
 use App\Filament\Traits\HasFilterableUrls;
@@ -40,7 +41,7 @@ class TermResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            SearchQueriesRelationManager::class,
         ];
     }
 

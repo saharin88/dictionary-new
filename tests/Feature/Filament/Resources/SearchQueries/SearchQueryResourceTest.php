@@ -2,6 +2,7 @@
 
 use App\Filament\Resources\SearchQueries\Pages\EditSearchQuery;
 use App\Filament\Resources\SearchQueries\Pages\ListSearchQueries;
+use App\Filament\Resources\SearchQueries\RelationManagers\TermsRelationManager;
 use App\Filament\Resources\SearchQueries\SearchQueryResource;
 use App\Filament\Resources\Terms\TermResource;
 use App\Models\SearchQuery;
@@ -10,6 +11,8 @@ use App\Models\User;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\DetachAction;
+use Filament\Actions\DetachBulkAction;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\assertDatabaseHas;
@@ -272,5 +275,61 @@ describe('Edit Search Query Page', function () {
             ->callAction(DeleteAction::class);
 
         assertDatabaseMissing('search_queries', ['id' => $searchQuery->id]);
+    });
+
+    it('renders terms relation manager on edit page', function () {
+        $searchQuery = SearchQuery::factory()->create();
+
+        livewire(EditSearchQuery::class, ['record' => $searchQuery->getKey()])
+            ->assertSuccessful()
+            ->assertSeeLivewire(TermsRelationManager::class);
+    });
+
+    it('lists related terms in relation manager', function () {
+        $searchQuery = SearchQuery::factory()->create();
+        $relatedTerms = Term::factory()->count(2)->create();
+
+        $searchQuery->terms()->attach($relatedTerms->pluck('id'));
+
+        livewire(TermsRelationManager::class, [
+            'ownerRecord' => $searchQuery,
+            'pageClass' => EditSearchQuery::class,
+        ])
+            ->assertSuccessful()
+            ->assertCanSeeTableRecords($relatedTerms);
+    });
+
+    it('can detach a term from search query', function () {
+        $searchQuery = SearchQuery::factory()->create();
+        $term = Term::factory()->create();
+        $searchQuery->terms()->attach($term);
+
+        livewire(TermsRelationManager::class, [
+            'ownerRecord' => $searchQuery,
+            'pageClass' => EditSearchQuery::class,
+        ])
+            ->callTableAction(DetachAction::class, $term)
+            ->assertSuccessful();
+
+        expect($searchQuery->terms()->count())->toBe(0);
+    });
+
+    it('can bulk detach terms from search query', function () {
+        $searchQuery = SearchQuery::factory()->create();
+        $terms = Term::factory()->count(3)->create();
+
+        $searchQuery->terms()->attach($terms->pluck('id'));
+
+        expect($searchQuery->terms()->count())->toBe(3);
+
+        livewire(TermsRelationManager::class, [
+            'ownerRecord' => $searchQuery,
+            'pageClass' => EditSearchQuery::class,
+        ])
+            ->assertCanSeeTableRecords($terms)
+            ->callTableBulkAction(DetachBulkAction::class, $terms)
+            ->assertSuccessful();
+
+        expect($searchQuery->refresh()->terms()->count())->toBe(0);
     });
 });
