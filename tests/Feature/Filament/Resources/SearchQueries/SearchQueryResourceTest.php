@@ -33,7 +33,12 @@ describe('List Search Queries Page', function () {
             ->assertTableColumnExists('has_result')
             ->assertCanRenderTableColumn('search_query')
             ->assertCanRenderTableColumn('count')
-            ->assertCanRenderTableColumn('has_result');
+            ->assertCanRenderTableColumn('has_result')
+            ->toggleAllTableColumns()
+            ->assertCanRenderTableColumn('title')
+            ->assertCanRenderTableColumn('terms_count')
+            ->assertCanRenderTableColumn('created_at')
+            ->assertCanRenderTableColumn('updated_at');
     });
 
     it('filters search queries by result status', function () {

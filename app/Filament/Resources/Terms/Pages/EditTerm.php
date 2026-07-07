@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Terms\Pages;
 use App\Filament\Resources\Terms\TermResource;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
+use Livewire\Attributes\On;
 
 class EditTerm extends EditRecord
 {
@@ -15,5 +16,13 @@ class EditTerm extends EditRecord
         return [
             DeleteAction::make(),
         ];
+    }
+
+    #[On('term-description-updated')]
+    public function refreshTermDescription(): void
+    {
+        $this->refreshFormData([
+            'description',
+        ]);
     }
 }

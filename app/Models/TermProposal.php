@@ -14,6 +14,8 @@ class TermProposal extends Model
     /** @use HasFactory<TermProposalFactory> */
     use HasFactory;
 
+    public const UPDATED_AT = null;
+
     public function term(): BelongsTo
     {
         return $this->belongsTo(Term::class);

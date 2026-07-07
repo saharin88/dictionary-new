@@ -4,8 +4,11 @@ use App\Filament\Resources\Terms\Pages\CreateTerm;
 use App\Filament\Resources\Terms\Pages\EditTerm;
 use App\Filament\Resources\Terms\Pages\ListTerms;
 use App\Filament\Resources\Terms\RelationManagers\SearchQueriesRelationManager;
+use App\Filament\Resources\Terms\RelationManagers\TermProposalsRelationManager;
+use App\Filament\Resources\Terms\TermResource;
 use App\Models\SearchQuery;
 use App\Models\Term;
+use App\Models\TermProposal;
 use App\Models\User;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -31,7 +34,11 @@ describe('List Terms Page', function () {
             ->assertCanRenderTableColumn('title')
             ->assertCanRenderTableColumn('description')
             ->assertCanRenderTableColumn('searchQueries.search_query')
-            ->assertCanRenderTableColumn('is_published');
+            ->assertCanRenderTableColumn('is_published')
+            ->toggleAllTableColumns()
+            ->assertCanRenderTableColumn('slug')
+            ->assertCanRenderTableColumn('created_at')
+            ->assertCanRenderTableColumn('updated_at');
     });
 
     it('shows term title, description and search queries in the table', function () {
@@ -323,6 +330,56 @@ describe('Edit Term Page', function () {
         livewire(EditTerm::class, ['record' => $term->getRouteKey()])
             ->assertSuccessful()
             ->assertSeeLivewire(SearchQueriesRelationManager::class);
+    });
+
+    it('registers term proposals relation manager for the term resource', function () {
+        expect(TermResource::getRelations())
+            ->toContain(TermProposalsRelationManager::class);
+    });
+
+    it('lists related term proposals in relation manager', function () {
+        $term = Term::factory()->create();
+        $proposals = TermProposal::factory()->count(2)->for($term)->create();
+
+        livewire(TermProposalsRelationManager::class, [
+            'ownerRecord' => $term,
+            'pageClass' => EditTerm::class,
+        ])
+            ->assertSuccessful()
+            ->assertCanSeeTableRecords($proposals);
+    });
+
+    it('can apply a term proposal from relation manager', function () {
+        $term = Term::factory()->create([
+            'description' => 'Initial description',
+        ]);
+        $proposal = TermProposal::factory()->for($term)->create([
+            'description' => 'Suggested description',
+        ]);
+
+        livewire(TermProposalsRelationManager::class, [
+            'ownerRecord' => $term,
+            'pageClass' => EditTerm::class,
+        ])
+            ->callAction(TestAction::make('apply')->table()->table($proposal), data: [
+                'description' => 'Updated from proposal with moderator edits',
+            ])
+            ->assertHasNoFormErrors()
+            ->assertNotified();
+
+        assertDatabaseHas('terms', [
+            'id' => $term->id,
+            'description' => '<p>Updated from proposal with moderator edits</p>',
+        ]);
+
+        assertDatabaseMissing('term_proposals', [
+            'id' => $proposal->id,
+        ]);
+    });
+
+    it('registers search queries relation manager for the term resource', function () {
+        expect(TermResource::getRelations())
+            ->toContain(SearchQueriesRelationManager::class);
     });
 
     it('lists related search queries in relation manager', function () {

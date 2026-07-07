@@ -6,6 +6,7 @@ use App\Filament\Resources\Terms\Pages\CreateTerm;
 use App\Filament\Resources\Terms\Pages\EditTerm;
 use App\Filament\Resources\Terms\Pages\ListTerms;
 use App\Filament\Resources\Terms\RelationManagers\SearchQueriesRelationManager;
+use App\Filament\Resources\Terms\RelationManagers\TermProposalsRelationManager;
 use App\Filament\Resources\Terms\Schemas\TermForm;
 use App\Filament\Resources\Terms\Tables\TermsTable;
 use App\Filament\Traits\HasFilterableUrls;
@@ -42,6 +43,7 @@ class TermResource extends Resource
     {
         return [
             SearchQueriesRelationManager::class,
+            TermProposalsRelationManager::class,
         ];
     }
 
