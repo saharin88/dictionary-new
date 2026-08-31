@@ -21,7 +21,7 @@ class TermForm
                         Grid::make(2)
                             ->schema([
                                 TextInput::make('title')
-                                    ->label('Term Title')
+                                    ->label(__('Term Title'))
                                     ->required()
                                     ->maxLength(255)
                                     ->placeholder('Enter the term to define')
@@ -36,7 +36,7 @@ class TermForm
                                     ->columnSpan(1),
 
                                 TextInput::make('slug')
-                                    ->label('Slug')
+                                    ->label(__('Slug'))
                                     ->required()
                                     ->maxLength(255)
                                     ->unique('terms', 'slug', ignoreRecord: true)
@@ -46,7 +46,7 @@ class TermForm
                             ]),
 
                         RichEditor::make('description')
-                            ->label('Full Description')
+                            ->label(__('Full Description'))
                             ->required()
                             ->maxLength(65535)
                             ->columnSpanFull()
@@ -70,7 +70,7 @@ class TermForm
                             ]),
 
                         Toggle::make('is_published')
-                            ->label('Published')
+                            ->label(__('Published'))
                             ->helperText('When enabled, this term will be visible to the public')
                             ->default(true),
                     ]),

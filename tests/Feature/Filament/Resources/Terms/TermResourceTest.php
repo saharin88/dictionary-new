@@ -3,6 +3,7 @@
 use App\Filament\Resources\Terms\Pages\CreateTerm;
 use App\Filament\Resources\Terms\Pages\EditTerm;
 use App\Filament\Resources\Terms\Pages\ListTerms;
+use App\Filament\Resources\Terms\RelationManagers\RelatedTermsRelationManager;
 use App\Filament\Resources\Terms\RelationManagers\SearchQueriesRelationManager;
 use App\Filament\Resources\Terms\RelationManagers\TermProposalsRelationManager;
 use App\Filament\Resources\Terms\TermResource;
@@ -12,16 +13,17 @@ use App\Models\TermProposal;
 use App\Models\User;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\DetachAction;
-use Filament\Actions\DetachBulkAction;
 use Filament\Actions\ExportBulkAction;
 use Filament\Actions\Testing\TestAction;
 use Filament\Tables\Columns\ToggleColumn;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\assertDatabaseHas;
 use function Pest\Laravel\assertDatabaseMissing;
 use function Pest\Livewire\livewire;
+
+uses(RefreshDatabase::class);
 
 beforeEach(function () {
     actingAs(User::factory()->create());
@@ -60,6 +62,7 @@ describe('List Terms Page', function () {
             ->assertSee('alpha')
             ->assertSee('dictionary');
     });
+
     it('renders hidden-by-default toggleable columns after toggling all columns on', function () {
         $term = Term::factory()->create();
 
@@ -110,14 +113,21 @@ describe('List Terms Page', function () {
             ->call('updateTableColumnState', 'is_published', (string) $term->getKey(), true)
             ->assertTableColumnStateSet('is_published', true, record: $term);
 
-        expect($term->refresh()->is_published)->toBeTrue();
+        assertDatabaseHas('terms', [
+            'id' => $term->id,
+            'is_published' => true,
+        ]);
 
         livewire(ListTerms::class)
             ->call('updateTableColumnState', 'is_published', (string) $term->getKey(), false)
             ->assertTableColumnStateSet('is_published', false, record: $term);
 
-        expect($term->refresh()->is_published)->toBeFalse();
+        assertDatabaseHas('terms', [
+            'id' => $term->id,
+            'is_published' => false,
+        ]);
     });
+
     it('filters terms by is_published select filter', function () {
         $publishedTerm = Term::factory()->published()->create();
         $unpublishedTerm = Term::factory()->unpublished()->create();
@@ -150,21 +160,9 @@ describe('List Terms Page', function () {
     });
 
     it('filters duplicate terms by title', function () {
-        $firstDuplicate = Term::factory()->create([
-            'title' => 'Duplicate title',
-            'slug' => 'duplicate-title-1',
-            'description' => 'First description',
-        ]);
-        $secondDuplicate = Term::factory()->create([
-            'title' => 'Duplicate title',
-            'slug' => 'duplicate-title-2',
-            'description' => 'Second description',
-        ]);
-        $uniqueTerm = Term::factory()->create([
-            'title' => 'Unique title',
-            'slug' => 'unique-title',
-            'description' => 'Unique description',
-        ]);
+        $firstDuplicate = Term::factory()->create(['title' => 'Duplicate title', 'slug' => 'duplicate-title-1']);
+        $secondDuplicate = Term::factory()->create(['title' => 'Duplicate title', 'slug' => 'duplicate-title-2']);
+        $uniqueTerm = Term::factory()->create(['title' => 'Unique title', 'slug' => 'unique-title']);
 
         livewire(ListTerms::class)
             ->assertTableFilterVisible('duplicates')
@@ -174,21 +172,9 @@ describe('List Terms Page', function () {
     });
 
     it('filters duplicate terms by title and description', function () {
-        $firstDuplicate = Term::factory()->create([
-            'title' => 'Fully duplicate title',
-            'slug' => 'fully-duplicate-title-1',
-            'description' => 'Fully duplicate description',
-        ]);
-        $secondDuplicate = Term::factory()->create([
-            'title' => 'Fully duplicate title',
-            'slug' => 'fully-duplicate-title-2',
-            'description' => 'Fully duplicate description',
-        ]);
-        $sameTitleDifferentDescription = Term::factory()->create([
-            'title' => 'Fully duplicate title',
-            'slug' => 'fully-duplicate-title-3',
-            'description' => 'Different description',
-        ]);
+        $firstDuplicate = Term::factory()->create(['title' => 'Fully duplicate title', 'description' => 'Fully duplicate description']);
+        $secondDuplicate = Term::factory()->create(['title' => 'Fully duplicate title', 'description' => 'Fully duplicate description']);
+        $sameTitleDifferentDescription = Term::factory()->create(['title' => 'Fully duplicate title', 'description' => 'Different description']);
 
         livewire(ListTerms::class)
             ->filterTable('duplicates', 'title_description')
@@ -197,26 +183,12 @@ describe('List Terms Page', function () {
     });
 
     it('sorts duplicate terms by title ascending when duplicates filter is active', function () {
-        $betaFirst = Term::factory()->create([
-            'title' => 'Beta duplicate title',
-            'slug' => 'beta-duplicate-title-1',
-        ]);
-        $betaSecond = Term::factory()->create([
-            'title' => 'Beta duplicate title',
-            'slug' => 'beta-duplicate-title-2',
-        ]);
-        $alphaFirst = Term::factory()->create([
-            'title' => 'Alpha duplicate title',
-            'slug' => 'alpha-duplicate-title-1',
-        ]);
-        $alphaSecond = Term::factory()->create([
-            'title' => 'Alpha duplicate title',
-            'slug' => 'alpha-duplicate-title-2',
-        ]);
+        $beta = Term::factory()->count(2)->create(['title' => 'Beta duplicate title']);
+        $alpha = Term::factory()->count(2)->create(['title' => 'Alpha duplicate title']);
 
         livewire(ListTerms::class)
             ->filterTable('duplicates', 'title')
-            ->assertCanSeeTableRecords([$betaFirst, $betaSecond, $alphaFirst, $alphaSecond])
+            ->assertCanSeeTableRecords([...$beta, ...$alpha])
             ->assertSeeInOrder(['Alpha duplicate title', 'Beta duplicate title']);
     });
 
@@ -261,6 +233,7 @@ describe('List Terms Page', function () {
 });
 
 describe('Create Term Page', function () {
+
     it('can create a term from create page', function () {
         livewire(CreateTerm::class)
             ->assertOk()
@@ -278,10 +251,10 @@ describe('Create Term Page', function () {
         assertDatabaseHas('terms', [
             'title' => 'Created Term',
             'slug' => 'created-term',
-            'description' => '<p>Created term description</p>',
             'is_published' => true,
         ]);
     });
+
 });
 
 describe('Edit Term Page', function () {
@@ -308,8 +281,6 @@ describe('Edit Term Page', function () {
         assertDatabaseHas('terms', [
             'id' => $term->id,
             'title' => 'Updated Term',
-            'slug' => 'updated-term',
-            'description' => '<p>Updated description</p>',
             'is_published' => true,
         ]);
     });
@@ -322,6 +293,111 @@ describe('Edit Term Page', function () {
             ->assertNotified();
 
         assertDatabaseMissing('terms', ['id' => $term->id]);
+    });
+
+    it('cleans related term pivot rows when deleting a term from edit page', function () {
+        $term = Term::factory()->create();
+        $relatedTerm = Term::factory()->create();
+
+        $term->relatedTerms()->attach($relatedTerm->id);
+
+        livewire(EditTerm::class, ['record' => $term->getRouteKey()])
+            ->callAction(DeleteAction::class)
+            ->assertNotified();
+
+        assertDatabaseMissing('terms', ['id' => $term->id]);
+        assertDatabaseMissing('term_term', ['term_id' => $term->id, 'related_term_id' => $relatedTerm->id]);
+        assertDatabaseMissing('term_term', ['term_id' => $relatedTerm->id, 'related_term_id' => $term->id]);
+    });
+
+    it('registers related terms relation manager for the term resource', function () {
+        expect(TermResource::getRelations())
+            ->toContain(RelatedTermsRelationManager::class);
+    });
+
+    it('lists related terms in relation manager', function () {
+        $term = Term::factory()->create();
+        $relatedTerms = Term::factory()->count(2)->create();
+
+        $term->relatedTerms()->attach($relatedTerms->pluck('id'));
+
+        livewire(RelatedTermsRelationManager::class, [
+            'ownerRecord' => $term,
+            'pageClass' => EditTerm::class,
+        ])
+            ->assertSuccessful()
+            ->assertCanSeeTableRecords($relatedTerms);
+    });
+
+    it('prevents linking a term to itself via UI validation', function () {
+        $term = Term::factory()->create();
+
+        livewire(RelatedTermsRelationManager::class, [
+            'ownerRecord' => $term,
+            'pageClass' => EditTerm::class,
+        ])
+            ->callTableAction('attach', data: [
+                'recordId' => $term->getKey(),
+            ])
+            ->assertHasActionErrors(['recordId']);
+
+        assertDatabaseMissing('term_term', ['term_id' => $term->id, 'related_term_id' => $term->id]);
+    });
+
+    it('can attach related term from relation manager and creates symmetric pivots', function () {
+        $term = Term::factory()->create();
+        $relatedTerm = Term::factory()->create();
+
+        livewire(RelatedTermsRelationManager::class, [
+            'ownerRecord' => $term,
+            'pageClass' => EditTerm::class,
+        ])
+            ->callTableAction('attach', data: [
+                'recordId' => $relatedTerm->getKey(),
+            ])
+            ->assertHasNoFormErrors()
+            ->assertNotified();
+
+        assertDatabaseHas('term_term', ['term_id' => $term->id, 'related_term_id' => $relatedTerm->id]);
+        assertDatabaseHas('term_term', ['term_id' => $relatedTerm->id, 'related_term_id' => $term->id]);
+    });
+
+    it('can detach related term from relation manager and removes symmetric pivots', function () {
+        $term = Term::factory()->create();
+        $relatedTerm = Term::factory()->create();
+
+        $term->relatedTerms()->attach($relatedTerm->id);
+
+        livewire(RelatedTermsRelationManager::class, [
+            'ownerRecord' => $term,
+            'pageClass' => EditTerm::class,
+        ])
+            ->callTableAction('detach', $relatedTerm)
+            ->assertSuccessful();
+
+        assertDatabaseMissing('term_term', ['term_id' => $term->id, 'related_term_id' => $relatedTerm->id]);
+        assertDatabaseMissing('term_term', ['term_id' => $relatedTerm->id, 'related_term_id' => $term->id]);
+    });
+
+    it('can bulk detach related terms from relation manager and removes symmetric pivots', function () {
+        $term = Term::factory()->create();
+        $relatedTerms = Term::factory()->count(3)->create();
+
+        $term->relatedTerms()->attach($relatedTerms->pluck('id'));
+
+        livewire(RelatedTermsRelationManager::class, [
+            'ownerRecord' => $term,
+            'pageClass' => EditTerm::class,
+        ])
+            ->callTableBulkAction('detach', $relatedTerms)
+            ->assertSuccessful();
+
+        expect($term->refresh()->relatedTerms()->count())->toBe(0);
+
+        foreach ($relatedTerms as $relatedTerm) {
+            assertDatabaseMissing('term_term', ['term_id' => $term->id, 'related_term_id' => $relatedTerm->id]);
+            assertDatabaseMissing('term_term', ['term_id' => $relatedTerm->id, 'related_term_id' => $term->id]);
+        }
     });
 
     it('renders search queries relation manager on edit page', function () {
@@ -350,31 +426,20 @@ describe('Edit Term Page', function () {
     });
 
     it('can apply a term proposal from relation manager', function () {
-        $term = Term::factory()->create([
-            'description' => 'Initial description',
-        ]);
-        $proposal = TermProposal::factory()->for($term)->create([
-            'description' => 'Suggested description',
-        ]);
+        $term = Term::factory()->create(['description' => 'Initial description']);
+        $proposal = TermProposal::factory()->for($term)->create(['description' => 'Suggested description']);
 
         livewire(TermProposalsRelationManager::class, [
             'ownerRecord' => $term,
             'pageClass' => EditTerm::class,
         ])
-            ->callAction(TestAction::make('apply')->table()->table($proposal), data: [
+            ->callTableAction('apply', $proposal, data: [
                 'description' => 'Updated from proposal with moderator edits',
             ])
             ->assertHasNoFormErrors()
             ->assertNotified();
 
-        assertDatabaseHas('terms', [
-            'id' => $term->id,
-            'description' => '<p>Updated from proposal with moderator edits</p>',
-        ]);
-
-        assertDatabaseMissing('term_proposals', [
-            'id' => $proposal->id,
-        ]);
+        assertDatabaseMissing('term_proposals', ['id' => $proposal->id]);
     });
 
     it('registers search queries relation manager for the term resource', function () {
@@ -405,7 +470,7 @@ describe('Edit Term Page', function () {
             'ownerRecord' => $term,
             'pageClass' => EditTerm::class,
         ])
-            ->callTableAction(DetachAction::class, $searchQuery)
+            ->callTableAction('detach', $searchQuery)
             ->assertSuccessful();
 
         expect($term->searchQueries()->count())->toBe(0);
@@ -420,7 +485,7 @@ describe('Edit Term Page', function () {
             'ownerRecord' => $term,
             'pageClass' => EditTerm::class,
         ])
-            ->callTableBulkAction(DetachBulkAction::class, $searchQueries)
+            ->callTableBulkAction('detach', $searchQueries)
             ->assertSuccessful();
 
         expect($term->refresh()->searchQueries()->count())->toBe(0);

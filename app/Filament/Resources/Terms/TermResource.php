@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Terms;
 use App\Filament\Resources\Terms\Pages\CreateTerm;
 use App\Filament\Resources\Terms\Pages\EditTerm;
 use App\Filament\Resources\Terms\Pages\ListTerms;
+use App\Filament\Resources\Terms\RelationManagers\RelatedTermsRelationManager;
 use App\Filament\Resources\Terms\RelationManagers\SearchQueriesRelationManager;
 use App\Filament\Resources\Terms\RelationManagers\TermProposalsRelationManager;
 use App\Filament\Resources\Terms\Schemas\TermForm;
@@ -44,6 +45,7 @@ class TermResource extends Resource
         return [
             SearchQueriesRelationManager::class,
             TermProposalsRelationManager::class,
+            RelatedTermsRelationManager::class,
         ];
     }
 

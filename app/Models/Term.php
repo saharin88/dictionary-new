@@ -6,6 +6,7 @@ use Database\Factories\TermFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
@@ -57,5 +58,15 @@ class Term extends Model
     public function getRouteKeyName()
     {
         return 'slug';
+    }
+
+    public function relatedTerms(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            Term::class,
+            'term_term',
+            'term_id',
+            'related_term_id'
+        )->using(TermPivot::class);
     }
 }
